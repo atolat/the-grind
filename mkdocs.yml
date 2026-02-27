@@ -13,6 +13,7 @@ markdown_extensions:
   - pymdownx.highlight:
       use_pygments: true
       noclasses: true
+      pygments_style: monokai
   - pymdownx.inlinehilite
   - tables
 
