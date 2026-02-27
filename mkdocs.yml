@@ -11,6 +11,7 @@ theme:
     primary: black
     accent: lime
   font:
+    text: JetBrains Mono
     code: JetBrains Mono
   features:
     - navigation.sections
