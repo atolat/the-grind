@@ -71,6 +71,21 @@ Tied to system design concepts. Primary language: Python.
 | Connection pools/proxies    | Context managers, descriptors, factory pattern |
 | Monitoring/observability    | Decorator pattern, logging, context managers   |
 
+## Documentation Site
+
+- Site: https://atolat.github.io/the-grind/
+- Theme: mkdocs-terminal (dark, monospace, terminal aesthetic)
+- Auto-deploys via GitHub Actions on push to main
+- Config: `mkdocs.yml`, docs served from `docs/` dir (symlinked to content folders)
+
+### IMPORTANT: Keep the site in sync
+When adding new learning material (new .md files or new folders):
+1. Add the new page to the `nav:` section in `mkdocs.yml`
+2. If it's a new folder, add a symlink in `docs/` pointing to it
+3. For Python deep dive `.py` files, create a companion `.md` file with key concepts
+   and a link to the `.py` source on GitHub
+4. Update `docs/index.md` with a link to the new page
+
 ## User Preferences
 - Primary language: Python
 - Knows Go well (can use for comparison/contrast)

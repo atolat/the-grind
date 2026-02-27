@@ -1,0 +1,25 @@
+site_name: The Grind
+site_description: System Design + Python Deep Dive
+repo_url: https://github.com/atolat/the-grind
+
+docs_dir: docs
+
+theme:
+  name: terminal
+  palette: dark
+
+nav:
+  - Home: index.md
+  - Connection Pooling & DB Proxies:
+    - General Concepts: proxysql-pgbouncer/00-connection-pooling-general.md
+    - Database Connection Pooling: proxysql-pgbouncer/01-connection-pooling.md
+    - Query Distribution: proxysql-pgbouncer/02-query-distribution.md
+    - Query Hints & ORMs: proxysql-pgbouncer/03-query-hints.md
+    - Prepared Statements: proxysql-pgbouncer/04-prepared-statements.md
+  - Task Delegation:
+    - Queues, Brokers & Streams: task-delegation/01-message-queues-brokers-streams.md
+    - Kafka Architecture: task-delegation/02-kafka-architecture.md
+  - Python Deep Dive:
+    - Threads & Locks: python-deep-dive/01-threads-and-locks.md
+    - Condition Variables: python-deep-dive/02-condition-variables.md
+    - Simple Message Queue: python-deep-dive/03-simple-message-queue.md
