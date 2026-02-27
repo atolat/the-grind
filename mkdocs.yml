@@ -8,16 +8,23 @@ theme:
   name: material
   palette:
     scheme: slate
-    primary: deep orange
-    accent: orange
+    primary: black
+    accent: lime
+  font:
+    code: JetBrains Mono
   features:
     - navigation.sections
     - navigation.expand
     - content.code.copy
 
+extra_css:
+  - stylesheets/extra.css
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
+      use_pygments: true
+      pygments_lang_class: true
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
