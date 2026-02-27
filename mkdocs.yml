@@ -8,6 +8,14 @@ theme:
   name: terminal
   palette: dark
 
+markdown_extensions:
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      use_pygments: true
+      noclasses: true
+  - pymdownx.inlinehilite
+  - tables
+
 nav:
   - Home: index.md
   - Connection Pooling & DB Proxies:
