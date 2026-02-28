@@ -55,6 +55,17 @@ With broker (decoupled):
                     → Consumer B   (producer doesn't care who consumes)
 ```
 
+```mermaid
+graph LR
+    P1[Producer 1] --> B[Broker]
+    P2[Producer 2] --> B
+    B --> Q1[Queue A]
+    B --> Q2[Queue B]
+    Q1 --> C1[Consumer A]
+    Q2 --> C2[Consumer B]
+    Q2 --> C3[Consumer C]
+```
+
 ## Queue Model
 
 Messages are deleted once consumed. One message → one consumer.
@@ -79,6 +90,34 @@ Worker 1: receives msg1 → msg1 invisible → crash!
                            (timeout expires)
                          → msg1 visible again
 Worker 2: receives msg1 → processes → ack → msg1 deleted
+```
+
+```mermaid
+sequenceDiagram
+    participant P as Producer
+    participant Q as Queue
+    participant W as Worker
+
+    P->>Q: enqueue(msg)
+    Q-->>W: deliver msg (msg now invisible)
+    W->>W: process msg
+    alt success
+        W->>Q: ack
+        Q->>Q: delete msg
+    else crash / timeout
+        Q->>Q: visibility timeout expires
+        Q->>Q: msg visible again
+        Q-->>W: redeliver to another worker
+    end
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Queued: producer enqueues
+    Queued --> InFlight: delivered to worker
+    InFlight --> Acked: worker sends ack
+    InFlight --> Queued: timeout (no ack)
+    Acked --> [*]: deleted from queue
 ```
 
 ### Fan-Out (Multiple Services)
@@ -111,6 +150,21 @@ Multiple consumers read the same messages independently. Any consumer can rewind
 
 No fan-out configuration needed. New service just starts reading the same topic.
 
+```mermaid
+graph LR
+    P[Producer] --> L[Append-Only Log]
+    L --- O0["offset 0: msg1"]
+    L --- O1["offset 1: msg2"]
+    L --- O2["offset 2: msg3"]
+    L --- O3["offset 3: msg4"]
+    L --- O4["offset 4: msg5"]
+    L --- O5["offset 5: msg6"]
+
+    O2 -.->|"reading here"| GA["Service A (offset 2)"]
+    O4 -.->|"reading here"| GB["Service B (offset 4)"]
+    O0 -.->|"replay from start"| GC["Service C (offset 0)"]
+```
+
 **Tools**: Apache Kafka, Amazon Kinesis, Redpanda, Apache Pulsar
 
 ## Queue vs Stream -- When to Use Which
@@ -129,9 +183,36 @@ No fan-out configuration needed. New service just starts reading the same topic.
 Queue deletes message on handover. No ack. If worker crashes, message is lost.
 Fast but lossy.
 
+```mermaid
+sequenceDiagram
+    participant Q as Queue
+    participant W as Worker
+
+    Q->>W: deliver msg (delete immediately)
+    W->>W: processing...
+    W--xW: crash!
+    Note over Q,W: msg is lost -- queue already deleted it
+```
+
 ### At-Least-Once
 Queue redelivers if no ack received (visibility timeout). Never loses messages,
 but worker might process the same message twice.
+
+```mermaid
+sequenceDiagram
+    participant Q as Queue
+    participant W1 as Worker 1
+    participant W2 as Worker 2
+
+    Q->>W1: deliver msg (keep in queue, invisible)
+    W1->>W1: processing...
+    W1--xW1: crash!
+    Note over Q: visibility timeout expires
+    Q->>W2: redeliver msg
+    W2->>W2: process msg
+    W2->>Q: ack
+    Note over Q,W2: msg processed (possibly twice if W1 partially succeeded)
+```
 
 ### Exactly-Once
 True exactly-once is impossible between two independent systems. The queue can't
@@ -162,3 +243,13 @@ Common patterns:
 - **Idempotency keys** -- unique ID per message, check before processing
 - **Upserts** -- "insert or update if exists" instead of "insert"
 - **State transitions** -- "set status to X" not "increment counter"
+
+```mermaid
+flowchart TD
+    A[Receive message] --> B{Seen this idempotency key before?}
+    B -->|No| C[Process message]
+    C --> D[Store idempotency key in DB]
+    D --> E[Send ack]
+    B -->|Yes| F[Skip processing]
+    F --> E
+```

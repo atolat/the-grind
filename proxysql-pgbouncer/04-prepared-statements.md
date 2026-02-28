@@ -5,6 +5,19 @@
 Normally every query goes through: Parse → Plan → Execute.
 A prepared statement splits this so you parse/plan once, execute many times.
 
+```mermaid
+flowchart LR
+    subgraph "Normal Query (every time)"
+        A1[SQL Text] --> A2[Parse] --> A3[Plan] --> A4[Execute]
+    end
+    subgraph "Prepared Statement"
+        B1[SQL Text] --> B2[Parse] --> B3[Plan] --> B4[Cached Plan]
+        B4 -->|"Execute(42)"| B5[Execute]
+        B4 -->|"Execute(99)"| B6[Execute]
+        B4 -->|"Execute(7)"| B7[Execute]
+    end
+```
+
 ### Python (SQLAlchemy)
 
 SQLAlchemy uses parameterized queries by default. The driver handles preparation.
@@ -137,6 +150,27 @@ App:  EXECUTE get_user(42)     →  Proxy  →  Connection B  (plan doesn't exis
 ```
 
 If the proxy gives a different backend connection, the EXECUTE fails.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Proxy
+    participant ConnA as Connection A
+    participant ConnB as Connection B
+
+    App->>Proxy: PREPARE get_user AS<br/>SELECT * FROM users WHERE id=$1
+    Proxy->>ConnA: PREPARE get_user ...
+    ConnA-->>Proxy: OK (plan cached on A)
+
+    Note over Proxy: Transaction ends,<br/>connection released
+
+    App->>Proxy: EXECUTE get_user(42)
+    Proxy->>ConnB: EXECUTE get_user(42)
+    ConnB-->>Proxy: ERROR: prepared statement<br/>"get_user" does not exist!
+    Proxy-->>App: Error
+
+    Note over Proxy: Fix: proxy must track<br/>and re-PREPARE on new conns
+```
 
 **PgBouncer (transaction mode)**: historically broke prepared statements. Recent
 versions track them and re-prepare transparently on new connections.

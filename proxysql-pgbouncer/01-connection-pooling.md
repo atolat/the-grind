@@ -97,6 +97,18 @@ App Server 50 (pool: 20) ──→  20 connections ──┘    = 1,000 connecti
 Most of those connections are idle most of the time, but they're unavailable to other
 servers that might need them.
 
+```mermaid
+graph LR
+    A1[App Server 1<br/>pool: 20] -->|20 conns| DB[(Database)]
+    A2[App Server 2<br/>pool: 20] -->|20 conns| DB
+    A3[App Server 3<br/>pool: 20] -->|20 conns| DB
+    A4[...<br/>App Server N] -->|20 conns| DB
+    A5[App Server 50<br/>pool: 20] -->|20 conns| DB
+    DB -.- T["50 × 20 = 1,000 connections<br/>most sitting idle"]
+    style T fill:none,stroke:none
+    style DB fill:#4a1a1a,stroke:#ff6666
+```
+
 ## Proxy-Level Pooling (PgBouncer / ProxySQL)
 
 A proxy sits between all app servers and the database. It multiplexes many app
@@ -114,6 +126,19 @@ App Server 50 (pool: 5) ──┘
 This works because not all 250 connections are actively querying at the same instant.
 PgBouncer borrows a real connection only for the duration of a query/transaction,
 then releases it for someone else.
+
+```mermaid
+graph LR
+    A1[App Server 1<br/>pool: 5] --> PG[PgBouncer<br/>pool: 30]
+    A2[App Server 2<br/>pool: 5] --> PG
+    A3[App Server 3<br/>pool: 5] --> PG
+    A4[...<br/>App Server N] --> PG
+    A5[App Server 50<br/>pool: 5] --> PG
+    PG -->|30 real conns| DB[(Database)]
+    PG -.- T["250 app conns → 30 DB conns<br/>~88% reduction"]
+    style T fill:none,stroke:none
+    style PG fill:#1a3a1a,stroke:#66ff66
+```
 
 ### PgBouncer Configuration (pgbouncer.ini)
 
@@ -135,6 +160,25 @@ pool_mode = transaction
 default_pool_size = 30      ; real DB connections per pool
 max_client_conn = 1000      ; max app connections accepted
 reserve_pool_size = 5       ; extra connections for burst
+```
+
+```mermaid
+graph TD
+    subgraph "Session Mode"
+        S1[Client connects] --> S2[Gets dedicated<br/>backend conn]
+        S2 --> S3[Keeps it for<br/>entire session]
+        S3 --> S4[Released on<br/>disconnect]
+    end
+    subgraph "Transaction Mode"
+        T1[Client sends<br/>BEGIN] --> T2[Gets backend<br/>conn]
+        T2 --> T3[Keeps it for<br/>one transaction]
+        T3 --> T4[Released on<br/>COMMIT/ROLLBACK]
+    end
+    subgraph "Statement Mode"
+        Q1[Client sends<br/>query] --> Q2[Gets backend<br/>conn]
+        Q2 --> Q3[Keeps it for<br/>one statement]
+        Q3 --> Q4[Released<br/>immediately]
+    end
 ```
 
 ### App Connects to PgBouncer Instead of DB Directly

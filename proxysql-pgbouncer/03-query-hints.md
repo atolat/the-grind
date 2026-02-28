@@ -10,6 +10,13 @@ context the proxy can't infer. Hints let the app guide the proxy.
 Hints are SQL comments embedded in the query. The DB ignores them, but the proxy
 pattern-matches on them.
 
+```mermaid
+flowchart LR
+    ORM["ORM / App Code"] -->|"/* force-primary */ SELECT ..."| Proxy["Proxy<br/>(reads comment)"]
+    Proxy -->|Routes based<br/>on hint| Primary[(Primary DB)]
+    Primary -->|Executes query<br/>ignores comment| Result[Result]
+```
+
 ```sql
 /* force-primary */ SELECT * FROM users WHERE id = 42;
 ```
@@ -151,6 +158,18 @@ func queryWithContext(ctx context.Context, pool *pgxpool.Pool, query string, arg
 ```
 
 ## What Most Teams Actually Do
+
+```mermaid
+flowchart TD
+    App[Application] --> Q{Query type?}
+    Q -->|Write| RW[Read-Write Pool<br/>→ Primary]
+    Q -->|Normal Read| RO[Read-Only Pool<br/>→ Replica]
+    Q -->|Read after Write| Hint["Add hint:<br/>/* force-primary */"]
+    Hint --> RW
+    RW --> Proxy[Proxy / PgBouncer]
+    RO --> Proxy
+    Proxy --> DB[(Database Cluster)]
+```
 
 1. ORM-level read/write split using two connections (or a router)
 2. Proxy handles pooling and load balancing across replicas

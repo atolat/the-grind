@@ -86,6 +86,16 @@ App  ──→  ProxySQL  ──→  parses SQL  ──→  SELECT?  ──→  
                                      ──→  INSERT?  ──→  Primary
 ```
 
+```mermaid
+flowchart LR
+    App[Application] -->|All queries| Proxy[ProxySQL]
+    Proxy -->|Parses SQL| Decision{SELECT?}
+    Decision -->|Yes| R{FOR UPDATE?}
+    Decision -->|No: INSERT<br/>UPDATE/DELETE| Primary[(Primary)]
+    R -->|No| Replica[(Replica)]
+    R -->|Yes| Primary
+```
+
 ### How the Proxy Knows Read vs Write
 
 It parses the SQL:
@@ -131,6 +141,18 @@ SAVE MYSQL SERVERS TO DISK;
 SAVE MYSQL QUERY RULES TO DISK;
 ```
 
+```mermaid
+graph TD
+    Q[Incoming Query] --> R1{Rule 1:<br/>SELECT...FOR UPDATE?}
+    R1 -->|Match| HG0[Hostgroup 0<br/>Primary]
+    R1 -->|No match| R2{Rule 2:<br/>SELECT?}
+    R2 -->|Match| HG1[Hostgroup 1<br/>Replicas]
+    R2 -->|No match| HG0
+    HG1 --> Rep1[Replica 1]
+    HG1 --> Rep2[Replica 2]
+    HG1 --> Rep3[Replica 3]
+```
+
 ### Load Balancing Across Replicas
 
 When multiple replicas exist in a hostgroup, ProxySQL distributes reads:
@@ -160,6 +182,24 @@ App reads:   SELECT * FROM users WHERE name = 'Alice'    →  Replica
 
 User creates an account, immediately gets "user not found." This is called
 read-after-write inconsistency.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Proxy
+    participant Primary
+    participant Replica
+    App->>Proxy: INSERT INTO users ('Alice')
+    Proxy->>Primary: INSERT INTO users ('Alice')
+    Primary-->>Proxy: OK
+    Proxy-->>App: OK
+    Primary-)Replica: Replication stream (async)
+    App->>Proxy: SELECT * WHERE name='Alice'
+    Proxy->>Replica: SELECT (routed as read)
+    Replica-->>Proxy: Empty result (not replicated yet!)
+    Proxy-->>App: User not found
+    Note over Primary,Replica: Replication lag causes<br/>read-after-write inconsistency
+```
 
 ### How Proxies Handle Lag
 

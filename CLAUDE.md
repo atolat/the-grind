@@ -28,6 +28,7 @@ This is an **interactive learning project**, NOT a code dump. Follow these rules
 - Wait for Arpan to signal readiness before introducing new concepts
 - Connect Python concepts back to system design topics where relevant
 - Use the Socratic method -- ask questions that lead to understanding
+- Include Mermaid diagrams in notes to visualize concepts (Arpan is a visual learner)
 
 ### Quiz/Challenge Format
 - "What do you think this code prints?" (predict output)
@@ -71,10 +72,23 @@ Tied to system design concepts. Primary language: Python.
 | Connection pools/proxies    | Context managers, descriptors, factory pattern |
 | Monitoring/observability    | Decorator pattern, logging, context managers   |
 
+## Diagrams
+
+- Use Mermaid.js diagrams in all markdown notes to aid visual learning
+- Mermaid is enabled in MkDocs via `pymdownx.superfences` custom fence config
+- Place diagrams inline next to the concept they illustrate
+- Preferred diagram types:
+  - `graph LR` / `graph TD` -- architecture, data flow, component relationships
+  - `sequenceDiagram` -- request flows, protocol exchanges, producer/consumer interactions
+  - `stateDiagram-v2` -- state machines, message lifecycle, connection states
+  - `flowchart` -- decision trees, routing logic
+- Keep diagrams simple -- one concept per diagram, not everything in one giant chart
+- Every new topic should include at least one diagram
+
 ## Documentation Site
 
 - Site: https://atolat.github.io/the-grind/
-- Theme: mkdocs-terminal (dark, monospace, terminal aesthetic)
+- Theme: MkDocs Material (dark slate, JetBrains Mono, GitHub Dark styling)
 - Auto-deploys via GitHub Actions on push to main
 - Config: `mkdocs.yml`, docs served from `docs/` dir (symlinked to content folders)
 

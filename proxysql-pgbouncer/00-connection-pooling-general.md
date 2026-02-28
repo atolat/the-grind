@@ -15,6 +15,17 @@ Every connection pool, regardless of what it pools, follows the same structure:
 3. When done, return it to the pool (don't close it)
 4. Handle edge cases: max size, idle timeout, health checks, what to do when pool is exhausted
 
+```mermaid
+stateDiagram-v2
+    [*] --> Idle : Pre-create or lazy init
+    Idle --> Borrowed : Caller acquires
+    Borrowed --> Idle : Caller releases
+    Idle --> Evicted : Idle timeout / health check fail
+    Evicted --> [*] : Destroyed
+    Idle --> Idle : Health check pass
+    Borrowed --> Evicted : Connection error
+```
+
 ## Where You See It
 
 ### Database Connections
@@ -99,6 +110,21 @@ for i := range conns {
 func getConn() *grpc.ClientConn {
     return conns[atomic.AddUint64(&counter, 1) % uint64(len(conns))]
 }
+```
+
+```mermaid
+graph LR
+    subgraph "Same Pattern, Different Resources"
+        direction TB
+        A[HTTP Pool] -->|manages| A1[TCP/TLS Sockets]
+        B[DB Pool] -->|manages| B1[Postgres/MySQL Sockets]
+        C[Thread Pool] -->|manages| C1[OS Thread Handles]
+        D[gRPC Pool] -->|manages| D1[HTTP/2 Connections]
+    end
+    style A fill:#2d2d2d,stroke:#888
+    style B fill:#2d2d2d,stroke:#888
+    style C fill:#2d2d2d,stroke:#888
+    style D fill:#2d2d2d,stroke:#888
 ```
 
 ## Do They Share Implementation?
