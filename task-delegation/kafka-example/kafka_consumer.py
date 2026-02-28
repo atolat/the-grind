@@ -14,7 +14,15 @@ import json
 
 def create_consumer(group_id: str = "order-service") -> KafkaConsumer:
     """Create and return a KafkaConsumer that deserializes JSON values."""
-    ...
+    consumer = KafkaConsumer(
+        "orders",
+        bootstrap_servers=["localhost:9092"],
+        group_id=group_id,
+        auto_offset_reset="earliest",
+        key_deserializer=lambda x: x.decode("utf-8"),
+        value_deserializer=lambda x: x.decode("utf-8")
+    )
+    return consumer
 
 
 if __name__ == "__main__":

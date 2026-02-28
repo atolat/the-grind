@@ -14,12 +14,17 @@ import json
 
 def create_producer() -> KafkaProducer:
     """Create and return a KafkaProducer that serializes values as JSON."""
-    ...
+    producer = KafkaProducer(
+        bootstrap_servers=["localhost:9092"],
+        key_serializer=lambda x: x.encode("utf-8"),
+        value_serializer=lambda x: x.encode("utf-8")
+    )
+    return producer
 
 
 def send_order(producer: KafkaProducer, customer_id: str, description: str):
     """Send an order message to the 'orders' topic with customer_id as key."""
-    ...
+    producer.send("orders", key=customer_id, value=description)
 
 
 if __name__ == "__main__":
