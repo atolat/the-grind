@@ -1,14 +1,26 @@
 """
 Kafka Demo Orchestrator
 
-Demonstrates:
-1. Single consumer group with multiple consumers (partition splitting)
-2. Multiple consumer groups (independent consumption of same messages)
-3. Key-based partition routing
+Demonstrates two core Kafka concepts:
+
+Demo 1 - Single consumer group with multiple consumers:
+  Two consumers share the same group_id. Kafka assigns partitions to each,
+  so messages are split between them. Each message is consumed by exactly
+  one consumer. This is how you scale processing horizontally.
+
+Demo 2 - Multiple consumer groups:
+  Two consumers with different group_ids. Each group independently reads
+  ALL messages from the topic. This is how different services (order processing,
+  analytics, email) can each consume the same event stream.
 
 Prerequisites:
-  - Kafka running: docker compose up -d
+  - Kafka running: docker compose up -d  (from this directory)
   - pip install kafka-python-ng
+
+Docs:
+- Consumer groups: https://kafka.apache.org/documentation/#intro_consumers
+- KafkaAdminClient: https://kafka-python.readthedocs.io/en/master/apidoc/KafkaAdminClient.html
+- threading.Event: https://docs.python.org/3/library/threading.html#event-objects
 
 Run: python run_demo.py
 """
@@ -25,10 +37,20 @@ BOOTSTRAP = ["localhost:9092"]
 
 
 def create_topic(name: str, partitions: int = 3) -> str:
-    """Create a fresh topic so offsets start clean. Returns topic name."""
+    """Create a fresh topic so offsets start clean.
+
+    Each demo uses a unique topic name (with a random suffix) to avoid
+    interference from previous runs. In production, topics are created
+    once and reused -- you don't create new ones per run.
+
+    replication_factor=1 because we only have one broker in our Docker setup.
+    In production, this would be 2 or 3 for fault tolerance.
+    """
     admin = KafkaAdminClient(bootstrap_servers=BOOTSTRAP)
     try:
-        admin.create_topics([NewTopic(name=name, num_partitions=partitions, replication_factor=1)])
+        admin.create_topics([
+            NewTopic(name=name, num_partitions=partitions, replication_factor=1)
+        ])
         print(f"Created topic '{name}' with {partitions} partitions")
     except TopicAlreadyExistsError:
         pass
@@ -37,7 +59,11 @@ def create_topic(name: str, partitions: int = 3) -> str:
 
 
 def produce_orders(topic: str):
-    """Send test orders to the given topic."""
+    """Send 6 test orders to the given topic.
+
+    Orders are keyed by customer_id so all orders for the same customer
+    land in the same partition (preserving per-customer ordering).
+    """
     producer = KafkaProducer(
         bootstrap_servers=BOOTSTRAP,
         key_serializer=lambda x: x.encode("utf-8"),
@@ -58,23 +84,47 @@ def produce_orders(topic: str):
         producer.send(topic, key=customer_id, value=item)
         print(f"  Sent: key={customer_id} value={item}")
 
-    producer.flush()
+    producer.flush()  # block until all messages are delivered
     producer.close()
     print()
 
 
-def run_consumer(name: str, group_id: str, topic: str, stop_event: threading.Event, results: list):
-    """Consumer loop that runs until stop_event is set."""
+def run_consumer(
+    name: str,
+    group_id: str,
+    topic: str,
+    stop_event: threading.Event,
+    results: list,
+):
+    """Consumer loop that runs in a background thread until stop_event is set.
+
+    Args:
+        name: human-readable name for logging (e.g., "consumer-A")
+        group_id: Kafka consumer group. Consumers with the same group_id
+            share partitions. Different group_ids consume independently.
+        topic: Kafka topic to consume from.
+        stop_event: threading.Event used to signal this thread to shut down.
+            The main thread calls stop_event.set() when it's time to stop.
+        results: shared list to collect consumed messages (for assertions/counting).
+
+    consumer_timeout_ms: how long to wait for new messages before the iterator
+    returns (breaks out of the for loop). Without this, the for loop blocks
+    indefinitely. We set it to 2000ms so the outer while loop can check
+    stop_event periodically.
+    """
     consumer = KafkaConsumer(
         topic,
         bootstrap_servers=BOOTSTRAP,
         group_id=group_id,
-        auto_offset_reset="earliest",
+        auto_offset_reset="earliest",  # start from beginning of topic
         key_deserializer=lambda x: x.decode("utf-8"),
         value_deserializer=lambda x: x.decode("utf-8"),
-        consumer_timeout_ms=2000,
+        consumer_timeout_ms=2000,  # yield control after 2s of no messages
     )
 
+    # Outer loop: keep consuming until stop_event is set by the main thread.
+    # Inner loop (for message in consumer): iterates over messages, yielding
+    # each one. Breaks after consumer_timeout_ms of inactivity.
     while not stop_event.is_set():
         for message in consumer:
             line = (
@@ -91,18 +141,31 @@ def run_consumer(name: str, group_id: str, topic: str, stop_event: threading.Eve
 
 
 def demo_single_group():
-    """Two consumers in the SAME group -- partitions are split between them."""
+    """Demo 1: Two consumers in the SAME group -- partitions are split.
+
+    With 3 partitions and 2 consumers in one group, Kafka assigns:
+      - consumer-A gets some partitions (e.g., partition 0, 2)
+      - consumer-B gets the rest (e.g., partition 1)
+
+    Each message is delivered to exactly ONE consumer. This is how you
+    horizontally scale processing -- add more consumers (up to the number
+    of partitions) to increase throughput.
+    """
     print("=" * 60)
     print("DEMO 1: Two consumers in ONE group (partition splitting)")
     print("=" * 60)
 
     topic = create_topic(f"demo1-{uuid.uuid4().hex[:6]}")
     produce_orders(topic)
-    time.sleep(1)
+    time.sleep(1)  # give Kafka a moment to commit the messages
 
+    # threading.Event is a simple flag: .set() turns it on, .is_set() checks it.
+    # Used here to signal consumer threads to shut down gracefully.
+    # See: https://docs.python.org/3/library/threading.html#event-objects
     stop = threading.Event()
     results = []
 
+    # Both consumers use group_id="group-1", so they share partitions
     t1 = threading.Thread(target=run_consumer, args=("consumer-A", "group-1", topic, stop, results))
     t2 = threading.Thread(target=run_consumer, args=("consumer-B", "group-1", topic, stop, results))
 
@@ -110,9 +173,10 @@ def demo_single_group():
     t1.start()
     t2.start()
 
+    # Wait long enough for consumers to join the group, rebalance, and consume
     time.sleep(10)
-    stop.set()
-    t1.join()
+    stop.set()   # signal consumers to stop
+    t1.join()    # wait for consumer threads to finish
     t2.join()
 
     print(f"\nTotal messages consumed: {len(results)}")
@@ -120,7 +184,13 @@ def demo_single_group():
 
 
 def demo_multiple_groups():
-    """Two consumers in DIFFERENT groups -- both see ALL messages."""
+    """Demo 2: Two consumers in DIFFERENT groups -- both see ALL messages.
+
+    Different group_ids = independent consumption. Each group maintains its
+    own offsets. This is the stream advantage over queues -- no need to
+    configure fan-out or duplicate queues. Just point a new service at
+    the same topic with a new group_id.
+    """
     print("=" * 60)
     print("DEMO 2: Two consumers in DIFFERENT groups (independent)")
     print("=" * 60)
@@ -133,6 +203,8 @@ def demo_multiple_groups():
     results_a = []
     results_b = []
 
+    # Different group_ids: "analytics" and "email-service"
+    # Each will consume ALL 6 messages independently
     t1 = threading.Thread(target=run_consumer, args=("consumer-X", "analytics", topic, stop, results_a))
     t2 = threading.Thread(target=run_consumer, args=("consumer-Y", "email-service", topic, stop, results_b))
 
