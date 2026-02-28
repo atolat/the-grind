@@ -6,6 +6,7 @@ primarily for interview preparation.
 ## Project Structure
 
 - `proxysql-pgbouncer/` -- Notes on database proxies, connection pooling, query routing
+- `databases/` -- SQL locks, isolation levels, MVCC, optimistic/pessimistic locking
 - `task-delegation/` -- Message queues, brokers, streams, Kafka
 - `python-deep-dive/` -- Python language concepts learned alongside system design topics
 

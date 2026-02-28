@@ -45,6 +45,9 @@ nav:
     - Query Distribution: proxysql-pgbouncer/02-query-distribution.md
     - Query Hints & ORMs: proxysql-pgbouncer/03-query-hints.md
     - Prepared Statements: proxysql-pgbouncer/04-prepared-statements.md
+  - Databases:
+    - Row-Level Locks & MVCC: databases/01-row-level-locks.md
+    - Isolation Levels: databases/02-isolation-levels.md
   - Task Delegation:
     - Queues, Brokers & Streams: task-delegation/01-message-queues-brokers-streams.md
     - Kafka Architecture: task-delegation/02-kafka-architecture.md

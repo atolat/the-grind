@@ -10,6 +10,9 @@ System design and Python -- learned one concept at a time.
 - [Query Distribution & Routing](proxysql-pgbouncer/02-query-distribution.md)
 - [Query Hints & ORMs](proxysql-pgbouncer/03-query-hints.md)
 - [Prepared Statements vs DB Functions](proxysql-pgbouncer/04-prepared-statements.md)
+### Databases
+- [Row-Level Locks & MVCC](databases/01-row-level-locks.md)
+- [Isolation Levels](databases/02-isolation-levels.md)
 
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)
