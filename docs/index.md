@@ -1,6 +1,6 @@
 # The Grind
 
-System design and Python -- learned one concept at a time.
+Using AI to learn, not to pretend I already know. One byte at a time.
 
 ## Topics
 
