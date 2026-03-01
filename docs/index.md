@@ -15,6 +15,7 @@ System design and Python -- learned one concept at a time.
 - [Isolation Levels](databases/02-isolation-levels.md)
 - [Optimistic vs Pessimistic Locking](databases/03-optimistic-pessimistic-locking.md)
 - [Deadlocks](databases/04-deadlocks.md)
+- [SKIP LOCKED & NOWAIT](databases/05-skip-locked-and-nowait.md)
 
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)
