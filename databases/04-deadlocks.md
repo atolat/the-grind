@@ -116,6 +116,19 @@ deadlock detector as a safety net.
 
 ### How It Works
 
+PostgreSQL uses a **wait-for graph** -- a directed graph where each edge means
+"Transaction A is waiting for Transaction B." When `deadlock_timeout` expires,
+PostgreSQL walks this graph looking for **cycles** (A → B → C → A). If it finds one,
+it picks a victim (typically the transaction that's done the least work) and aborts it.
+
+This is the same algorithm as cycle detection in a directed graph (DFS with a visited set) --
+a classic graph algorithm problem.
+
+**Further reading:**
+- [PostgreSQL docs: Deadlocks](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-DEADLOCKS)
+- [PostgreSQL docs: deadlock_timeout](https://www.postgresql.org/docs/current/runtime-config-locks.html#GUC-DEADLOCK-TIMEOUT)
+- [PostgreSQL wiki: Lock Monitoring](https://wiki.postgresql.org/wiki/Lock_Monitoring)
+
 Two configuration parameters:
 
 | Setting | What It Does | Default |
