@@ -8,7 +8,7 @@ Key concepts:
 - `with lock:` is a context manager that auto acquires/releases
 - Minimize the critical section (locked code) -- keep it fast
 
-See [01-threads-and-locks.py](https://github.com/atolat/the-grind/blob/main/python-deep-dive/01-threads-and-locks.py) for runnable code.
+<small>[Run this code locally](https://github.com/atolat/the-grind/blob/main/python-deep-dive/01-threads-and-locks.py) or try snippets in the [Playground](../playground.md).</small>
 
 ## Race Condition
 
@@ -31,17 +31,23 @@ sequenceDiagram
 ```
 
 ```python
+import threading
+
 counter = 0
 
 def increment_unsafe():
     global counter
     for _ in range(1_000_000):
-        counter += 1  # NOT atomic
+        counter += 1  # NOT atomic: read, add, write can be interleaved
 
 t1 = threading.Thread(target=increment_unsafe)
 t2 = threading.Thread(target=increment_unsafe)
-t1.start(); t2.start(); t1.join(); t2.join()
-print(counter)  # less than 2,000,000!
+t1.start()
+t2.start()
+t1.join()
+t2.join()
+
+print(f"Unsafe counter (expect 2,000,000): {counter}")  # will be less!
 ```
 
 ## Fix 1: Use a Lock
@@ -56,14 +62,28 @@ stateDiagram-v2
     Blocked --> Acquired: Lock released, blocked thread wakes up
 ```
 
+Only one thread can hold the lock at a time. `with lock:` is a context
+manager -- it acquires on entry and releases on exit (even if an exception
+is thrown).
+
 ```python
+counter = 0
 lock = threading.Lock()
 
 def increment_safe():
     global counter
     for _ in range(1_000_000):
-        with lock:
-            counter += 1  # only one thread at a time
+        with lock:         # acquire lock (context manager, auto-releases)
+            counter += 1   # only one thread at a time
+
+t1 = threading.Thread(target=increment_safe)
+t2 = threading.Thread(target=increment_safe)
+t1.start()
+t2.start()
+t1.join()
+t2.join()
+
+print(f"Safe counter (expect 2,000,000): {counter}")  # exactly 2,000,000
 ```
 
 ```mermaid
@@ -101,6 +121,9 @@ Downside: if ALL the work is inside the lock, you've made it sequential again.
 
 ## Fix 2: Avoid Shared State
 
+Each thread works on its own counter, combine at the end.
+Often simpler and less bug-prone than locking.
+
 ```python
 def increment_isolated(results, index):
     local_counter = 0
@@ -109,6 +132,12 @@ def increment_isolated(results, index):
     results[index] = local_counter
 
 results = [0, 0]
-# each thread writes to its own index, combine at the end
-print(sum(results))  # exactly 2,000,000
+t1 = threading.Thread(target=increment_isolated, args=(results, 0))
+t2 = threading.Thread(target=increment_isolated, args=(results, 1))
+t1.start()
+t2.start()
+t1.join()
+t2.join()
+
+print(f"Isolated counter (expect 2,000,000): {sum(results)}")
 ```

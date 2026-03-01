@@ -23,7 +23,7 @@ graph LR
     end
 ```
 
-See [02-condition-variables.py](https://github.com/atolat/the-grind/blob/main/python-deep-dive/02-condition-variables.py) for runnable code.
+<small>[Run this code locally](https://github.com/atolat/the-grind/blob/main/python-deep-dive/02-condition-variables.py) or try snippets in the [Playground](../playground.md).</small>
 
 ## Connection to System Design
 
@@ -56,6 +56,9 @@ sequenceDiagram
 ## Simple Connection Pool
 
 ```python
+import threading
+import time
+
 class SimpleConnectionPool:
     def __init__(self, size):
         self.pool = [f"conn_{i}" for i in range(size)]
@@ -63,9 +66,11 @@ class SimpleConnectionPool:
 
     def borrow(self, timeout=None):
         with self.condition:
-            while len(self.pool) == 0:       # while, not if!
-                self.condition.wait(timeout=timeout)
-            return self.pool.pop()
+            while len(self.pool) == 0:       # while, not if! (spurious wakeups)
+                notified = self.condition.wait(timeout=timeout)
+                if not notified:             # timed out
+                    raise TimeoutError("No connection available")
+            return self.pool.pop()           # grab a connection
 
     def return_conn(self, conn):
         with self.condition:
@@ -86,3 +91,45 @@ stateDiagram-v2
     ReturnedConn --> [*]: notify() wakes a waiter
     TimedOut --> [*]: raise error / return None
 ```
+
+## Demo: 3 Threads, 2 Connections
+
+Thread C will sleep until A or B returns their connection:
+
+```python
+pool = SimpleConnectionPool(size=2)  # only 2 connections
+
+def worker(name, delay):
+    print(f"{name}: waiting for connection...")
+    conn = pool.borrow(timeout=10)
+    print(f"{name}: got {conn}")
+    time.sleep(delay)  # simulate query work (NO lock held during this)
+    print(f"{name}: returning {conn}")
+    pool.return_conn(conn)
+
+# 3 threads, but only 2 connections
+threads = [
+    threading.Thread(target=worker, args=("Thread-A", 1)),
+    threading.Thread(target=worker, args=("Thread-B", 2)),
+    threading.Thread(target=worker, args=("Thread-C", 1)),
+]
+
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+
+print("All done.")
+```
+
+## Anti-Pattern: Busy Waiting
+
+```python
+def borrow_busy_wait(pool_list):
+    """Burns CPU checking in a tight loop. Wastes resources."""
+    while len(pool_list) == 0:
+        pass  # spinning, checking millions of times per second
+    return pool_list.pop()
+```
+
+Never do this. Use `condition.wait()` instead.

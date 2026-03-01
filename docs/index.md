@@ -25,3 +25,6 @@ System design and Python -- learned one concept at a time.
 - [Threads & Locks](python-deep-dive/01-threads-and-locks.md)
 - [Condition Variables](python-deep-dive/02-condition-variables.md)
 - [Simple Message Queue](python-deep-dive/03-simple-message-queue.md)
+
+### Tools
+- [Code Playground](playground.md) -- Run Python and Go snippets in the browser

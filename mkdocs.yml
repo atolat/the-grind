@@ -36,6 +36,7 @@ markdown_extensions:
       alternate_style: true
   - tables
   - admonition
+  - md_in_html
 
 nav:
   - Home: index.md
@@ -58,3 +59,4 @@ nav:
     - Threads & Locks: python-deep-dive/01-threads-and-locks.md
     - Condition Variables: python-deep-dive/02-condition-variables.md
     - Simple Message Queue: python-deep-dive/03-simple-message-queue.md
+  - Playground: playground.md
