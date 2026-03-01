@@ -131,8 +131,8 @@ initPyodide();
 
 ## Go
 
-The Go Playground runs on Google's servers -- full Go runtime, no limitations.
+Powered by [goplay.tools](https://goplay.tools/) -- a better Go Playground with syntax highlighting and autocomplete. Runs on real Go servers.
 
-<a href="https://go.dev/play/" target="_blank" style="display: inline-block; background: #21262d; color: #58a6ff; border: 1px solid #30363d; padding: 8px 20px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; text-decoration: none; margin-bottom: 12px;">Open Go Playground &#8599;</a>
+<iframe src="https://goplay.tools/" style="width: 100%; height: 500px; border: 1px solid #21262d; border-radius: 6px;" loading="lazy"></iframe>
 
-<small style="color: #8b949e;">Opens in a new tab. Go Playground blocks embedding, so it can't be shown inline.</small>
+<small style="color: #8b949e;">If the embed doesn't load, <a href="https://goplay.tools/" target="_blank">open goplay.tools directly</a>. Some browser privacy settings may block third-party iframes.</small>
