@@ -216,3 +216,81 @@ These exist but are rarely something you'd use directly in application code.
 **For interviews:** you should know table-level locks exist and are used for DDL
 operations (schema changes, migrations). You don't need to memorize the full matrix.
 The row-level stuff above is what matters for system design discussions.
+
+---
+
+## Advisory Locks
+
+Advisory locks don't lock any row or table. They lock an **arbitrary number** that
+your application defines. PostgreSQL just provides the coordination -- your app decides
+what the number means.
+
+```sql
+-- Acquire advisory lock on number 42
+SELECT pg_advisory_lock(42);
+-- ... do work ...
+-- Release it
+SELECT pg_advisory_unlock(42);
+```
+
+### Why Would You Lock a Number?
+
+Think about a distributed cron job. You have 10 servers, each running a scheduler.
+Every minute, all 10 try to run the "send daily email digest" job. Only one should run it.
+
+```sql
+-- Each server tries this:
+SELECT pg_try_advisory_lock(hashtext('daily-email-digest'));
+-- Returns true  → you got the lock, run the job
+-- Returns false → another server is running it, skip
+```
+
+```mermaid
+sequenceDiagram
+    participant S1 as Server 1
+    participant DB as PostgreSQL
+    participant S2 as Server 2
+    participant S3 as Server 3
+
+    S1->>DB: pg_try_advisory_lock(123)
+    DB-->>S1: true ✅ (got lock)
+
+    S2->>DB: pg_try_advisory_lock(123)
+    DB-->>S2: false ❌ (already held)
+
+    S3->>DB: pg_try_advisory_lock(123)
+    DB-->>S3: false ❌ (already held)
+
+    Note over S1: Runs the job...
+
+    S1->>DB: pg_advisory_unlock(123)
+    Note over DB: Lock released
+```
+
+### Two Flavors
+
+| Function | Behavior | Use Case |
+|----------|----------|----------|
+| `pg_advisory_lock(id)` | **Waits** until lock is available | Sequential processing |
+| `pg_try_advisory_lock(id)` | Returns **true/false** immediately | Skip if someone else is doing it |
+
+### Session vs Transaction Scoped
+
+| Scope | Functions | Released When |
+|-------|-----------|--------------|
+| **Session** (default) | `pg_advisory_lock` / `pg_advisory_unlock` | Explicit unlock or disconnect |
+| **Transaction** | `pg_advisory_xact_lock` | Automatically on COMMIT/ROLLBACK |
+
+### Advisory Lock vs Row Lock vs Application Lock
+
+| | Row Lock | Advisory Lock | App-Level Lock (Redis) |
+|--|---------|--------------|----------------------|
+| **What's locked** | A specific row | An arbitrary number | A key in Redis |
+| **Scope** | Within a transaction | Session or transaction | Across any system |
+| **Needs a row?** | Yes | No | No |
+| **Needs PostgreSQL?** | Yes | Yes | No (needs Redis) |
+| **Use case** | Protect data | Coordinate processes | Distributed locking |
+
+**Further reading:**
+- [PostgreSQL docs: Advisory Locks](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS)
+- [PostgreSQL docs: Advisory Lock Functions](https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS)
