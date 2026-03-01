@@ -135,4 +135,4 @@ The Go Playground runs on Google's servers -- full Go runtime, no limitations.
 
 <a href="https://go.dev/play/" target="_blank" style="display: inline-block; background: #21262d; color: #58a6ff; border: 1px solid #30363d; padding: 8px 20px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; text-decoration: none; margin-bottom: 12px;">Open Go Playground &#8599;</a>
 
-<iframe src="https://go.dev/play/" style="width: 100%; height: 500px; border: 1px solid #21262d; border-radius: 6px; background: #0d1117;" loading="lazy"></iframe>
+<small style="color: #8b949e;">Opens in a new tab. Go Playground blocks embedding, so it can't be shown inline.</small>
