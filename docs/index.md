@@ -16,6 +16,8 @@ Using AI to learn, not to pretend I already know. One byte at a time.
 - [Optimistic vs Pessimistic Locking](databases/03-optimistic-pessimistic-locking.md)
 - [Deadlocks](databases/04-deadlocks.md)
 - [SKIP LOCKED & NOWAIT](databases/05-skip-locked-and-nowait.md)
+- [SQL Data Types](databases/06-sql-data-types.md)
+- [Design: KV Store on SQL](databases/07-kv-store-design.md)
 
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)

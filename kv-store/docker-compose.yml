@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: bitnami/postgresql:16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRESQL_USERNAME=kvstore
+      - POSTGRESQL_PASSWORD=kvstore123
+      - POSTGRESQL_DATABASE=kvstore
+    volumes:
+      - pgdata:/bitnami/postgresql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgdata:
