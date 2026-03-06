@@ -1,4 +1,4 @@
-iimport time
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -37,12 +37,11 @@ async def put_key(key: str, body: PutRequest):
 
     async with pool.acquire() as conn:
         await conn.execute(
-            "INSERT INTO kv_store (key, value, expire_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $2, expire_at = $3",
+            "INSERT INTO store (key, value, expire_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $2, expire_at = $3",
             key,
             body.value,
             expire_at,
         )
-        pass
 
     return KVResponse(key=key, value=body.value)
 
@@ -60,12 +59,11 @@ async def get_key(key: str):
     pool = await get_pool()
 
     async with pool.acquire() as conn:
-        # TODO (Arpan): Write the SELECT query
-        # - Only return the key if it exists AND is not expired
-        # - Remember: expire_at=0 means "never expires"
-        # - What should the WHERE clause look like?
-        row = None  # Replace with actual query
-
+        row = await conn.fetchrow(
+            "SELECT key, value FROM store WHERE key = $1 AND (expire_at > $2 OR expire_at = 0)",
+            key,
+            _now(),
+        )
     if row is None:
         raise HTTPException(status_code=404, detail="Key not found")
 
@@ -81,13 +79,11 @@ async def delete_key(key: str):
     pool = await get_pool()
 
     async with pool.acquire() as conn:
-        # TODO (Arpan): Write the soft DELETE query
-        # - Don't hard delete! Set expire_at = -1
-        # - Only delete if the key is currently alive
-        # - What does "currently alive" mean in terms of expire_at?
-        result = None  # Replace with actual query
-
-    # TODO (Arpan): How do you check if the UPDATE affected any rows?
-    # If no rows were affected, the key didn't exist — return 404
-
-    return {"status": "deleted", "key": key}
+        result = await conn.execute(
+            "UPDATE store SET expire_at = -1 WHERE key = $1 AND (expire_at > $2 OR expire_at = 0)",
+            key,
+            _now(),
+        )
+    if result == "UPDATE 0":
+        raise HTTPException(status_code=404, detail="Key not found")
+    return {"status": "success"}
