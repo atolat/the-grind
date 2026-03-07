@@ -18,6 +18,7 @@ Using AI to learn, not to pretend I already know. One byte at a time.
 - [SKIP LOCKED & NOWAIT](databases/05-skip-locked-and-nowait.md)
 - [SQL Data Types](databases/06-sql-data-types.md)
 - [Design: KV Store on SQL](databases/07-kv-store-design.md)
+- [Non-Relational Databases](databases/08-non-relational-databases.md)
 
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)
