@@ -1,15 +1,51 @@
 services:
-  postgres:
-    image: postgres:16
+  # ── Primary (read-write) ─────────────────────────────────────────
+  primary:
+    image: bitnami/postgresql:latest
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=kvstore
-      - POSTGRES_PASSWORD=kvstore123
-      - POSTGRES_DB=kvstore
+      - POSTGRESQL_USERNAME=kvstore
+      - POSTGRESQL_PASSWORD=kvstore123
+      - POSTGRESQL_DATABASE=kvstore
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_pass
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - primary_data:/bitnami/postgresql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
+  # ── Replica 1 (read-only) ───────────────────────────────────────
+  replica1:
+    image: bitnami/postgresql:latest
+    ports:
+      - "5433:5432"
+    depends_on:
+      - primary
+    environment:
+      - POSTGRESQL_USERNAME=kvstore
+      - POSTGRESQL_PASSWORD=kvstore123
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_pass
+      - POSTGRESQL_MASTER_HOST=primary
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+
+  # ── Replica 2 (read-only) ───────────────────────────────────────
+  replica2:
+    image: bitnami/postgresql:latest
+    ports:
+      - "5434:5432"
+    depends_on:
+      - primary
+    environment:
+      - POSTGRESQL_USERNAME=kvstore
+      - POSTGRESQL_PASSWORD=kvstore123
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_pass
+      - POSTGRESQL_MASTER_HOST=primary
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+
 volumes:
-  pgdata:
+  primary_data:

@@ -514,6 +514,178 @@ func handler() {
 
 ---
 
+## The Three Keywords: `async`, `await`, `yield`
+
+These are the only three keywords you need for async Python. Each one does
+exactly one thing.
+
+### Mental Model: Data Flow Direction
+
+```mermaid
+graph LR
+    subgraph "yield = data flows OUT"
+        G["Generator"] -->|"yield value"| C["Caller"]
+    end
+
+    subgraph "await = data flows IN"
+        IO["I/O Result"] -->|"await result"| CO["Coroutine"]
+    end
+
+    style G fill:#4a3a1a,stroke:#ffaa44
+    style IO fill:#1a3a4a,stroke:#44aaff
+```
+
+| Keyword | What it means | Direction | Mental image |
+|---------|--------------|-----------|--------------|
+| `yield` | "Pause, give a value OUT" | ← outward to caller | A vending machine dispensing items |
+| `await` | "Pause, wait for value IN" | → inward from I/O | Ordering food and waiting for delivery |
+| `async def` | "This function may pause" | — (just a label) | A sign on the door: "may be away" |
+
+### `async def` — "This function may pause"
+
+```python
+# Regular function — runs to completion, caller waits
+def compute():
+    return 1 + 1
+
+# Async function — may pause at await points, caller can do other work
+async def fetch_data():
+    result = await db.query("SELECT ...")  # might pause here
+    return result
+```
+
+`async def` doesn't DO anything by itself. It's a **label** that tells Python:
+"compile this function as a coroutine." You can't use `await` inside a regular `def`.
+
+### `await` — "Pause me, I'm waiting for I/O"
+
+```python
+async def get_user(user_id: int):
+    # await says: "This takes time (network I/O). Suspend me.
+    # Event loop, go handle other requests while I wait."
+    row = await db.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+
+    # When the DB responds, the event loop resumes me HERE.
+    return row
+```
+
+**What `await` does under the hood:**
+1. Checks if the result is ready → if yes, continue immediately
+2. If not ready → save the coroutine's state (local variables, instruction pointer)
+3. Return control to the event loop
+4. Event loop runs other tasks
+5. When the I/O completes → event loop resumes this coroutine right after the `await`
+
+**Sequential vs concurrent awaits:**
+```python
+# SEQUENTIAL — total time = 1min + 1sec = ~1min 1sec
+async def slow():
+    res1 = await slow_task()     # waits 1 min
+    res2 = await fast_task()     # waits 1 sec (only starts AFTER slow_task finishes)
+    return res1, res2
+
+# CONCURRENT — total time = max(1min, 1sec) = ~1 min
+async def fast():
+    res1, res2 = await asyncio.gather(
+        slow_task(),   # both start at the same time
+        fast_task(),   # this finishes in 1 sec, but gather waits for both
+    )
+    return res1, res2
+```
+
+### `yield` — "Pause, give a value out"
+
+```python
+# Generator — produces values on demand
+def count_up(n: int):
+    for i in range(n):
+        yield i  # "here's the next value, I'll pause until you ask for more"
+
+# Usage: values come out ONE AT A TIME
+for num in count_up(1000000):
+    print(num)  # memory: O(1), not O(n)
+```
+
+**Async generator** — yields values, but getting each value involves I/O:
+```python
+async def stream_rows(query: str):
+    async with pool.acquire() as conn:
+        async for row in conn.cursor(query):
+            yield row  # produce rows one at a time (async for + yield)
+```
+
+### `async with` — "Enter/exit may involve I/O"
+
+Regular `with` calls `__enter__` / `__exit__`.
+`async with` calls `__aenter__` / `__aexit__` — both can `await` internally.
+
+```python
+# Regular with — enter/exit are instant
+with open("file.txt") as f:
+    data = f.read()
+
+# Async with — enter involves network I/O (getting a connection)
+async with pool.acquire() as conn:     # __aenter__: may wait for free connection
+    row = await conn.fetchrow(query)
+                                        # __aexit__: returns connection to pool
+```
+
+If you used regular `with pool.acquire()` on an async pool, you'd get a
+`TypeError` because the pool's acquire returns an async context manager that
+has `__aenter__`/`__aexit__`, not `__enter__`/`__exit__`.
+
+### `async for` — "Getting the next item may involve I/O"
+
+```python
+# Regular for — next item is instant (in-memory list)
+for item in my_list:
+    process(item)
+
+# Async for — getting the next item involves I/O
+async for row in conn.cursor("SELECT * FROM big_table"):
+    process(row)  # each row is fetched from the DB as needed
+```
+
+### Quick Reference Card
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     ASYNC PYTHON CHEAT SHEET                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  async def func():     → "this function CAN pause"             │
+│      await expr        → "pause here, wait for I/O"            │
+│      yield value       → "pause here, give value out"          │
+│                                                                 │
+│  async with obj:       → "enter/exit may involve I/O"          │
+│      ...               → calls __aenter__ / __aexit__          │
+│                                                                 │
+│  async for item in x:  → "getting next item may involve I/O"   │
+│      ...               → calls __aiter__ / __anext__           │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  PATTERNS:                                                      │
+│                                                                 │
+│  Sequential:  res1 = await task1()                              │
+│               res2 = await task2()     # waits for task1 first  │
+│                                                                 │
+│  Concurrent:  res1, res2 = await asyncio.gather(                │
+│                   task1(), task2()     # both run at once        │
+│               )                                                 │
+│                                                                 │
+│  Background:  task = asyncio.create_task(long_running())        │
+│               # continues immediately, task runs in background  │
+│                                                                 │
+│  DON'T:       time.sleep(5)           # BLOCKS the event loop!  │
+│  DO:          await asyncio.sleep(5)  # suspends, loop is free  │
+│                                                                 │
+│  DON'T:       result = requests.get(url)      # blocking HTTP!  │
+│  DO:          result = await httpx.get(url)    # async HTTP     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Summary
 
 ```mermaid
