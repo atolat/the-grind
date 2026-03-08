@@ -10,15 +10,24 @@ Using AI to learn, not to pretend I already know. One byte at a time.
 - [Query Distribution & Routing](proxysql-pgbouncer/02-query-distribution.md)
 - [Query Hints & ORMs](proxysql-pgbouncer/03-query-hints.md)
 - [Prepared Statements vs DB Functions](proxysql-pgbouncer/04-prepared-statements.md)
-### Databases
-- [Row-Level Locks & MVCC](databases/01-row-level-locks.md)
-- [Isolation Levels](databases/02-isolation-levels.md)
-- [Optimistic vs Pessimistic Locking](databases/03-optimistic-pessimistic-locking.md)
-- [Deadlocks](databases/04-deadlocks.md)
-- [SKIP LOCKED & NOWAIT](databases/05-skip-locked-and-nowait.md)
-- [SQL Data Types](databases/06-sql-data-types.md)
-- [Design: KV Store on SQL](databases/07-kv-store-design.md)
-- [Non-Relational Databases](databases/08-non-relational-databases.md)
+
+### Databases — Relational
+- [Row-Level Locks & MVCC](databases/relational/01-row-level-locks.md)
+- [Isolation Levels](databases/relational/02-isolation-levels.md)
+- [Optimistic vs Pessimistic Locking](databases/relational/03-optimistic-pessimistic-locking.md)
+- [Deadlocks](databases/relational/04-deadlocks.md)
+- [SKIP LOCKED & NOWAIT](databases/relational/05-skip-locked-and-nowait.md)
+- [SQL Data Types](databases/relational/06-sql-data-types.md)
+- [Design: KV Store on SQL](databases/relational/07-kv-store-design.md)
+
+### Databases — Non-Relational
+- [Columnar Databases](databases/non-relational/01-columnar-databases.md)
+- [Graph Databases](databases/non-relational/02-graph-databases.md)
+- [Wide Column Stores](databases/non-relational/03-wide-column-stores.md)
+- [Polyglot Persistence](databases/non-relational/04-polyglot-persistence.md)
+
+### Databases — Core Concepts
+*Coming soon: B+ Trees, LSM Trees, and more*
 
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)
