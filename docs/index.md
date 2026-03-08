@@ -29,6 +29,10 @@ Using AI to learn, not to pretend I already know. One byte at a time.
 ### Databases — Core Concepts
 - [Storage Engines: B+ Trees vs LSM Trees](databases/core-concepts/01-storage-engines.md)
 
+### System Design
+- [Design: KV Store](system-design/01-kv-store.md)
+- [Design: Slack Realtime Communication](system-design/02-slack-realtime-communication.md)
+
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)
 - [Kafka Architecture](task-delegation/02-kafka-architecture.md)
