@@ -153,11 +153,13 @@ CREATE TABLE orders_by_order_id (
 
 ---
 
-## Secondary Indexes: Local and Scatter-Gather
+## Secondary Indexes: LSI vs GSI
 
 An alternative to dual writes: `CREATE INDEX ON orders(order_id)`
 
-But secondary indexes in Cassandra are **local** — each node only indexes its own data:
+### LSI — Local Secondary Index (document-partitioned)
+
+Each node only indexes its own data:
 
 ```
 Node 1: local index on order_id → {abc-123, def-456}  (Node 1's data only)
@@ -167,10 +169,34 @@ Node 3: local index on order_id → {mno-345, pqr-678}  (Node 3's data only)
 
 A query on `order_id` still hits **every node** (scatter-gather).
 
-| Approach | Pros | Cons |
+### GSI — Global Secondary Index (term-partitioned)
+
+The index itself is partitioned by the **indexed column's value**:
+
+```
+Index Node A: order_id a-m → {abc-123 → Data Node 1, ghi-789 → Data Node 2}
+Index Node B: order_id n-z → {pqr-678 → Data Node 3}
+```
+
+Query `order_id='abc-123'` → hash → Index Node A → points to Data Node 1. **Two hops, not scatter-gather.**
+
+### LSI vs GSI Comparison
+
+| | LSI (Local / Document-Partitioned) | GSI (Global / Term-Partitioned) |
 |---|---|---|
-| **Dual write** (separate table) | Single-node lookup, fast | Double storage, app writes to both |
-| **Secondary index** | No extra table, simple | Scatter-gather on every query |
+| **Read** | Scatter-gather (slow) | 2 hops (fast) |
+| **Write** | Fast (update local index only) | Slower (must update remote index node) |
+| **Consistency** | Immediate (same node) | Eventually consistent (async update) |
+| **Cassandra** | ✅ Native support | ❌ Not native — use dual write tables |
+| **DynamoDB** | ✅ Both LSI and GSI supported | ✅ Both LSI and GSI supported |
+
+### Which to use?
+
+| Approach | Best For |
+|---|---|
+| **Dual write** (separate table) | Hot path queries — single-node lookup, predictable |
+| **LSI (secondary index)** | Rare, low-frequency queries — avoid extra table overhead |
+| **GSI** | When available (DynamoDB) — fast reads on non-partition columns |
 
 **Rule of thumb:** Secondary indexes are fine for rare, low-frequency queries. For your hot path — use a dedicated table.
 
@@ -252,9 +278,54 @@ The pattern:
 | **Google Bigtable** | The original wide column store (2006 paper). Cloud-managed. |
 | **DynamoDB** | AWS managed. Not technically wide-column but similar partition/sort key model. |
 
+## Cassandra's Evolution
+
+Cassandra has gone through a major architectural shift:
+
+### Original Model (~2008-2012): Bigtable-Inspired
+
+Modeled after Google's **Bigtable** paper. Used **column families** with a Thrift API:
+
+```
+ColumnFamily "users" {
+  row_key "user-1" → {
+    Column("name", "Alice", timestamp=123),
+    Column("email", "a@mail.com", timestamp=124),
+  }
+}
+```
+
+Each row was a bag of name-value-timestamp triples. Dynamic columns, no schema, raw Thrift RPC.
+
+### Modern Model (~2012+): Dynamo-Inspired + CQL
+
+| Old (Bigtable-inspired) | New (Dynamo-inspired + CQL) |
+|---|---|
+| Column families, Thrift API | `CREATE TABLE` with typed columns |
+| Dynamic columns, no schema | Schema with partition + clustering keys |
+| Raw key-value operations | SQL-like syntax (`SELECT`, `INSERT`, `WHERE`) |
+| Confusing "super columns" | Clean composite PRIMARY KEYs |
+
+**Key ideas from Amazon's Dynamo paper (2007):**
+
+- Consistent hashing for partitioning
+- Tunable consistency (ONE, QUORUM, ALL)
+- Leaderless replication (any node accepts writes)
+
+### Important: Dynamo vs DynamoDB
+
+| | Dynamo (paper) | Dynamo (internal) | DynamoDB (AWS) |
+|---|---|---|---|
+| **What** | Published paper (2007) | Amazon's internal system | AWS managed service (2012) |
+| **Access** | Public ideas | Closely guarded | Pay-per-use cloud service |
+| **Influence** | Cassandra, Riak, Voldemort all borrowed from it | Only Amazon engineers | Different internal architecture |
+
+Cassandra is often described as **"Bigtable's data model + Dynamo's distribution model."**
+The "wide column" name is a leftover from the old column family days.
+
+---
+
 ## Topics for Later
 
-- **LSM Trees** — the storage engine behind Cassandra's fast writes (covered in core-concepts)
+- **LSM Trees** — the storage engine behind Cassandra's fast writes (see [Storage Engines](../core-concepts/01-storage-engines.md))
 - **Consistent Hashing** — how partition keys map to nodes (Week 06)
-- **Cassandra's Evolution** — from column families (Thrift API) to CQL and Dynamo-like model
-- **GSI vs LSI** — Global vs Local Secondary Indexes in depth

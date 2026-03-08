@@ -60,7 +60,8 @@ nav:
       - Graph Databases: databases/non-relational/02-graph-databases.md
       - Wide Column Stores: databases/non-relational/03-wide-column-stores.md
       - Polyglot Persistence: databases/non-relational/04-polyglot-persistence.md
-    #- Core Concepts:  # Coming soon: B+ Trees, LSM Trees
+    - Core Concepts:
+      - "Storage Engines: B+ Trees vs LSM Trees": databases/core-concepts/01-storage-engines.md
   - Task Delegation:
     - Queues, Brokers & Streams: task-delegation/01-message-queues-brokers-streams.md
     - Kafka Architecture: task-delegation/02-kafka-architecture.md

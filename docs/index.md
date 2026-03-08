@@ -27,7 +27,7 @@ Using AI to learn, not to pretend I already know. One byte at a time.
 - [Polyglot Persistence](databases/non-relational/04-polyglot-persistence.md)
 
 ### Databases — Core Concepts
-*Coming soon: B+ Trees, LSM Trees, and more*
+- [Storage Engines: B+ Trees vs LSM Trees](databases/core-concepts/01-storage-engines.md)
 
 ### Task Delegation
 - [Message Queues, Brokers & Streams](task-delegation/01-message-queues-brokers-streams.md)
